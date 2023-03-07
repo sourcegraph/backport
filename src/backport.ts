@@ -43,6 +43,7 @@ const getBaseBranches = ({
     const base = getBaseBranchFromLabel(payload.label.name, labelRegExp);
     return base ? [base] : [];
   }
+
   return compact(
     payload.pull_request.labels.map((label) =>
       getBaseBranchFromLabel(label.name, labelRegExp),
@@ -82,10 +83,10 @@ const backportOnce = async ({
   github,
   head,
   labels,
+  merged_by,
   owner,
   repo,
   title,
-  merged_by,
 }: Readonly<{
   author: string;
   base: string;
@@ -94,10 +95,10 @@ const backportOnce = async ({
   github: InstanceType<typeof GitHub>;
   head: string;
   labels: readonly string[];
+  merged_by: string;
   owner: string;
   repo: string;
   title: string;
-  merged_by: string;
 }>): Promise<number> => {
   const git = async (...args: string[]) => {
     await exec("git", args, { cwd: repo });
@@ -127,10 +128,12 @@ const backportOnce = async ({
     "POST /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers",
     {
       owner,
-      repo,
       pull_number: number,
+      repo,
       reviewers:
-        author != merged_by && merged_by != "" ? [author, merged_by] : [author],
+        author !== merged_by && merged_by !== ""
+          ? [author, merged_by]
+          : [author],
     },
   );
   if (labels.length > 0) {
@@ -224,7 +227,6 @@ const backport = async ({
 }): Promise<{ [base: string]: number }> => {
   const {
     pull_request: {
-      user: { login: author },
       body: originalBody,
       labels: originalLabels,
       merge_commit_sha: mergeCommitSha,
@@ -232,6 +234,7 @@ const backport = async ({
       merged_by: originalMergedBy,
       number,
       title: originalTitle,
+      user: { login: author },
     },
     repository: {
       name: repo,
@@ -284,6 +287,8 @@ const backport = async ({
     const labels = originalLabels
       .map((label) => label.name)
       .filter((label) => !labelRegExp.test(label));
+    labels.push(`backported-to-${base}`);
+
     const title = getTitle({ base, number, title: originalTitle });
     const merged_by = originalMergedBy?.login ?? "";
 
@@ -299,10 +304,10 @@ const backport = async ({
           github,
           head,
           labels,
+          merged_by,
           owner,
           repo,
           title,
-          merged_by,
         });
         createdPullRequestBaseBranchToNumber[base] = backportPullRequestNumber;
       } catch (_error: unknown) {
