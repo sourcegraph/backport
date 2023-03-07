@@ -43,7 +43,6 @@ const getBaseBranches = ({
     const base = getBaseBranchFromLabel(payload.label.name, labelRegExp);
     return base ? [base] : [];
   }
-
   return compact(
     payload.pull_request.labels.map((label) =>
       getBaseBranchFromLabel(label.name, labelRegExp),
@@ -76,6 +75,7 @@ const warnIfSquashIsNotTheOnlyAllowedMergeMethod = async ({
 };
 
 const backportOnce = async ({
+  author,
   base,
   body,
   commitSha,
@@ -85,7 +85,9 @@ const backportOnce = async ({
   owner,
   repo,
   title,
+  merged_by,
 }: Readonly<{
+  author: string;
   base: string;
   body: string;
   commitSha: string;
@@ -95,6 +97,7 @@ const backportOnce = async ({
   owner: string;
   repo: string;
   title: string;
+  merged_by: string;
 }>): Promise<number> => {
   const git = async (...args: string[]) => {
     await exec("git", args, { cwd: repo });
@@ -120,6 +123,16 @@ const backportOnce = async ({
     repo,
     title,
   });
+  await github.request(
+    "POST /repos/{owner}/{repo}/pulls/{pull_number}/requested_reviewers",
+    {
+      owner,
+      repo,
+      pull_number: number,
+      reviewers:
+        author != merged_by && merged_by != "" ? [author, merged_by] : [author],
+    },
+  );
   if (labels.length > 0) {
     await github.request(
       "PUT /repos/{owner}/{repo}/issues/{issue_number}/labels",
@@ -179,7 +192,6 @@ const getFailedBackportCommentBody = ({
 const backport = async ({
   getBody,
   getHead,
-  getLabels,
   getTitle,
   labelRegExp,
   payload,
@@ -199,12 +211,6 @@ const backport = async ({
       number: number;
     }>,
   ) => string;
-  getLabels: (
-    props: Readonly<{
-      base: string;
-      labels: readonly string[];
-    }>,
-  ) => string[];
   getTitle: (
     props: Readonly<{
       base: string;
@@ -218,10 +224,12 @@ const backport = async ({
 }): Promise<{ [base: string]: number }> => {
   const {
     pull_request: {
+      user: { login: author },
       body: originalBody,
       labels: originalLabels,
       merge_commit_sha: mergeCommitSha,
       merged,
+      merged_by: originalMergedBy,
       number,
       title: originalTitle,
     },
@@ -239,7 +247,6 @@ const backport = async ({
   }
 
   const baseBranches = getBaseBranches({ labelRegExp, payload });
-
   if (baseBranches.length === 0) {
     info("No backports required.");
     return {};
@@ -274,19 +281,18 @@ const backport = async ({
       number,
     });
     const head = getHead({ base, number });
-    const labels = getLabels({
-      base,
-      labels: originalLabels
-        .map(({ name }) => name)
-        .filter((label) => !labelRegExp.test(label)),
-    });
+    const labels = originalLabels
+      .map((label) => label.name)
+      .filter((label) => !labelRegExp.test(label));
     const title = getTitle({ base, number, title: originalTitle });
+    const merged_by = originalMergedBy?.login ?? "";
 
     // PRs are handled sequentially to avoid breaking GitHub's log grouping feature.
     // eslint-disable-next-line no-await-in-loop
     await group(`Backporting to ${base} on ${head}.`, async () => {
       try {
         const backportPullRequestNumber = await backportOnce({
+          author,
           base,
           body,
           commitSha: mergeCommitSha,
@@ -296,6 +302,7 @@ const backport = async ({
           owner,
           repo,
           title,
+          merged_by,
         });
         createdPullRequestBaseBranchToNumber[base] = backportPullRequestNumber;
       } catch (_error: unknown) {
