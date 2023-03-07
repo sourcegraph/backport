@@ -7,27 +7,11 @@ import { backport } from "./backport.js";
 
 const run = async () => {
   try {
-    const [getBody, getHead, _getLabels, getTitle] = [
+    const [getBody, getHead, getTitle] = [
       "body_template",
       "head_template",
-      "labels_template",
       "title_template",
     ].map((name) => template(getInput(name)));
-
-    const getLabels = ({
-      base,
-      labels,
-    }: Readonly<{ base: string; labels: readonly string[] }>): string[] => {
-      const json = _getLabels({ base, labels });
-      try {
-        return JSON.parse(json) as string[];
-      } catch (_error: unknown) {
-        const error = ensureError(_error);
-        throw new Error(`Could not parse labels from invalid JSON: ${json}.`, {
-          cause: error,
-        });
-      }
-    };
 
     const labelPattern = getInput("label_pattern");
     const labelRegExp = new RegExp(labelPattern);
@@ -49,7 +33,6 @@ const run = async () => {
     const createdPullRequestBaseBranchToNumber = await backport({
       getBody,
       getHead,
-      getLabels,
       getTitle,
       labelRegExp,
       payload,
