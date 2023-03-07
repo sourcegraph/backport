@@ -328,6 +328,16 @@ const backport = async ({
             repo,
           },
         );
+
+        await github.request(
+          "POST /repos/{owner}/{repo}/issues/{issue_number}/labels",
+          {
+            issue_number: number,
+            labels: ["release-blocker", `failed-backport-to-${base}`],
+            owner,
+            repo,
+          },
+        );
       }
     });
   }
