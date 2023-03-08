@@ -333,7 +333,11 @@ const backport = async ({
           "POST /repos/{owner}/{repo}/issues/{issue_number}/labels",
           {
             issue_number: number,
-            labels: ["release-blocker", `failed-backport-to-${base}`],
+            labels: [
+              "backports",
+              "release-blocker",
+              `failed-backport-to-${base}`,
+            ],
             owner,
             repo,
           },
