@@ -157,11 +157,13 @@ const getFailedBackportCommentBody = ({
   commitSha,
   errorMessage,
   head,
+  runUrl,
 }: {
   base: string;
   commitSha: string;
   errorMessage: string;
   head: string;
+  runUrl: string;
 }) => {
   const worktreePath = `.worktrees/backport-${base}`;
   return [
@@ -189,6 +191,7 @@ const getFailedBackportCommentBody = ({
     `git worktree remove ${worktreePath}`,
     "```",
     `Then, create a pull request where the \`base\` branch is \`${base}\` and the \`compare\`/\`head\` branch is \`${head}\`.`,
+    `See ${runUrl} for more information.`,
   ].join("\n");
 };
 
@@ -198,6 +201,9 @@ const backport = async ({
   getTitle,
   labelRegExp,
   payload,
+  runId,
+  runNumber,
+  serverUrl,
   token,
 }: {
   getBody: (
@@ -223,6 +229,9 @@ const backport = async ({
   ) => string;
   labelRegExp: RegExp;
   payload: PullRequestClosedEvent | PullRequestLabeledEvent;
+  runId: number;
+  runNumber: number;
+  serverUrl: string;
   token: string;
 }): Promise<{ [base: string]: number }> => {
   const {
@@ -291,7 +300,7 @@ const backport = async ({
 
     const title = getTitle({ base, number, title: originalTitle });
     const merged_by = originalMergedBy?.login ?? "";
-
+    const runUrl = `${serverUrl}/${owner}/${repo}/actions/runs/${runId}/jobs/${runNumber}`;
     // PRs are handled sequentially to avoid breaking GitHub's log grouping feature.
     // eslint-disable-next-line no-await-in-loop
     await group(`Backporting to ${base} on ${head}.`, async () => {
@@ -322,6 +331,7 @@ const backport = async ({
               commitSha: mergeCommitSha,
               errorMessage: error.message,
               head,
+              runUrl,
             }),
             issue_number: number,
             owner,
