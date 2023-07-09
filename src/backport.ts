@@ -134,6 +134,7 @@ const backportOnce = async ({
         author !== merged_by && merged_by !== ""
           ? [author, merged_by]
           : [author],
+      team_reviewers: ["release-guild"],
     },
   );
   if (labels.length > 0) {
