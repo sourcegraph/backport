@@ -134,6 +134,7 @@ const backportOnce = async ({
         author !== merged_by && merged_by !== ""
           ? [author, merged_by]
           : [author],
+      team_reviewers: ["release-guild"],
     },
   );
   if (labels.length > 0) {
@@ -192,6 +193,7 @@ const getFailedBackportCommentBody = ({
     "```",
     `Then, create a pull request where the \`base\` branch is \`${base}\` and the \`compare\`/\`head\` branch is \`${head}\`.`,
     `See ${runUrl} for more information.`,
+    "Make sure to tag `@sourcegraph/release-guild` in the pull request description.",
   ].join("\n");
 };
 
