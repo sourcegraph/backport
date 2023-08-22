@@ -194,6 +194,7 @@ const getFailedBackportCommentBody = ({
     `Then, create a pull request where the \`base\` branch is \`${base}\` and the \`compare\`/\`head\` branch is \`${head}\`.`,
     `See ${runUrl} for more information.`,
     "Make sure to tag `@sourcegraph/release-guild` in the pull request description.",
+    "Once the backport pull request is created, kindly remove the `release-blocker` from this pull request."
   ].join("\n");
 };
 
