@@ -24,7 +24,6 @@ const run = async () => {
 
     const payload = context.payload as PullRequestEvent;
     const runId = context.runId; 
-    const runNumber = context.runNumber;
     const serverUrl = context.serverUrl;
 
     if (payload.action !== "closed" && payload.action !== "labeled") {
@@ -40,7 +39,6 @@ const run = async () => {
       labelRegExp,
       payload,
       runId,
-      runNumber,
       serverUrl,
       token,
     });

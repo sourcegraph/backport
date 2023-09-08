@@ -168,7 +168,7 @@ const getFailedBackportCommentBody = ({
 }) => {
   const worktreePath = `.worktrees/backport-${base}`;
   return [
-    `The backport to \`${base}\` failed:`,
+    `The backport to \`${base}\` failed at ${runUrl}:`,
     "```",
     errorMessage,
     "```",
@@ -191,10 +191,22 @@ const getFailedBackportCommentBody = ({
     "# Delete the working tree",
     `git worktree remove ${worktreePath}`,
     "```",
-    `Then, create a pull request where the \`base\` branch is \`${base}\` and the \`compare\`/\`head\` branch is \`${head}\`.`,
-    `See ${runUrl} for more information.`,
-    "Make sure to tag `@sourcegraph/release-guild` in the pull request description.",
-    "Once the backport pull request is created, kindly remove the `release-blocker` from this pull request."
+    "If you encouter conflict, first resolve the conflict and stage all files, then run the commands below:",
+    "```bash",
+    "git cherry-pick --continue",
+    "# Push it to GitHub",
+    `git push --set-upstream origin ${head}`,
+    "# Go back to the original working tree",
+    "cd ../..",
+    "# Delete the working tree",
+    `git worktree remove ${worktreePath}`,
+    "```",
+    "",
+    "- [ ] Follow above instructions to backport the commit.",
+    `- [ ] Create a pull request where the \`base\` branch is \`${base}\` and the \`compare\`/\`head\` branch is \`${head}\`., [click here to create the pull request](https://github.com/sourcegraph/sourcegraph/compare/${base}...${head}?expand=1).`,
+    "- [ ] Make sure to tag `@sourcegraph/release-guild` in the pull request description.",
+    "- [ ] Once the backport pull request is created, kindly remove the `release-blocker` from this pull request.",
+    "",
   ].join("\n");
 };
 
@@ -205,7 +217,6 @@ const backport = async ({
   labelRegExp,
   payload,
   runId,
-  runNumber,
   serverUrl,
   token,
 }: {
@@ -233,7 +244,6 @@ const backport = async ({
   labelRegExp: RegExp;
   payload: PullRequestClosedEvent | PullRequestLabeledEvent;
   runId: number;
-  runNumber: number;
   serverUrl: string;
   token: string;
 }): Promise<{ [base: string]: number }> => {
@@ -303,7 +313,7 @@ const backport = async ({
 
     const title = getTitle({ base, number, title: originalTitle });
     const merged_by = originalMergedBy?.login ?? "";
-    const runUrl = `${serverUrl}/${owner}/${repo}/actions/runs/${runId}/jobs/${runNumber}`;
+    const runUrl = `${serverUrl}/${owner}/${repo}/actions/runs/${runId}`;
     // PRs are handled sequentially to avoid breaking GitHub's log grouping feature.
     // eslint-disable-next-line no-await-in-loop
     await group(`Backporting to ${base} on ${head}.`, async () => {
