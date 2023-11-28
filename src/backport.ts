@@ -9,6 +9,8 @@ import type {
 import ensureError from "ensure-error";
 import { compact } from "lodash-es";
 
+import { stripTestPlanFromPRBody } from "./utils";
+
 const getBaseBranchFromLabel = (
   label: string,
   labelRegExp: RegExp,
@@ -301,7 +303,7 @@ const backport = async ({
   for (const base of baseBranches) {
     const body = getBody({
       base,
-      body: originalBody ?? "",
+      body: originalBody ? stripTestPlanFromPRBody(originalBody) :  "",
       mergeCommitSha,
       number,
     });
