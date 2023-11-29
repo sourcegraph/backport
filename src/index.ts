@@ -23,7 +23,7 @@ const run = async () => {
     }
 
     const payload = context.payload as PullRequestEvent;
-    const runId = context.runId; 
+    const runId = context.runId;
     const serverUrl = context.serverUrl;
 
     if (payload.action !== "closed" && payload.action !== "labeled") {
@@ -31,7 +31,7 @@ const run = async () => {
         `Unsupported pull request event action: ${payload.action}.`,
       );
     }
-  
+
     const createdPullRequestBaseBranchToNumber = await backport({
       getBody,
       getHead,
