@@ -303,7 +303,7 @@ const backport = async ({
   for (const base of baseBranches) {
     const body = getBody({
       base,
-      body: originalBody ? stripTestPlanFromPRBody(originalBody) :  "",
+      body: originalBody ? stripTestPlanFromPRBody(originalBody) : "",
       mergeCommitSha,
       number,
     });
