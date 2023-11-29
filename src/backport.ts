@@ -9,7 +9,7 @@ import type {
 import ensureError from "ensure-error";
 import { compact } from "lodash-es";
 
-import { stripTestPlanFromPRBody } from "./utils";
+import { stripTestPlanFromPRBody } from "./utils.js";
 
 const getBaseBranchFromLabel = (
   label: string,
