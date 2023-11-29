@@ -8,7 +8,6 @@ import type {
 } from "@octokit/webhooks-types";
 import ensureError from "ensure-error";
 import { compact } from "lodash-es";
-
 import { stripTestPlanFromPRBody } from "./utils.js";
 
 const getBaseBranchFromLabel = (
