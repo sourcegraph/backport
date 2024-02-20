@@ -135,7 +135,7 @@ const backportOnce = async ({
         author !== merged_by && merged_by !== ""
           ? [author, merged_by]
           : [author],
-      team_reviewers: ["release-guild"],
+      team_reviewers: ["release"],
     },
   );
   if (labels.length > 0) {
@@ -205,7 +205,7 @@ const getFailedBackportCommentBody = ({
     "",
     "- [ ] Follow above instructions to backport the commit.",
     `- [ ] Create a pull request where the \`base\` branch is \`${base}\` and the \`compare\`/\`head\` branch is \`${head}\`., [click here to create the pull request](https://github.com/sourcegraph/sourcegraph/compare/${base}...${head}?expand=1).`,
-    "- [ ] Make sure to tag `@sourcegraph/release-guild` in the pull request description.",
+    "- [ ] Make sure to tag `@sourcegraph/release` in the pull request description.",
     "- [ ] Once the backport pull request is created, kindly remove the `release-blocker` from this pull request.",
     "",
   ].join("\n");
