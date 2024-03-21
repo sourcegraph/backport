@@ -167,6 +167,7 @@ const getFailedBackportCommentBody = ({
   errorMessage: string;
   head: string;
   runUrl: string;
+  prNumber: number;
 }) => {
   const worktreePath = `.worktrees/backport-${base}`;
   return `The backport to \`${base}\` failed at ${runUrl}:
@@ -278,7 +279,7 @@ const backport = async ({
       merge_commit_sha: mergeCommitSha,
       merged,
       merged_by: originalMergedBy,
-      number,
+      number: prNumber,
       title: originalTitle,
       user: { login: author },
     },
@@ -305,7 +306,7 @@ const backport = async ({
 
   await warnIfSquashIsNotTheOnlyAllowedMergeMethod({ github, owner, repo });
 
-  info(`Backporting ${mergeCommitSha} from #${number}.`);
+  info(`Backporting ${mergeCommitSha} from #${prNumber}.`);
 
   const cloneUrl = new URL(payload.repository.clone_url);
   cloneUrl.username = "x-access-token";
@@ -327,15 +328,15 @@ const backport = async ({
       base,
       body: originalBody ? stripTestPlanFromPRBody(originalBody) : "",
       mergeCommitSha,
-      number,
+      number: prNumber,
     });
-    const head = getHead({ base, number });
+    const head = getHead({ base, number: prNumber });
     const labels = originalLabels
       .map((label) => label.name)
       .filter((label) => !labelRegExp.test(label));
     labels.push("backports", `backported-to-${base}`);
 
-    const title = getTitle({ base, number, title: originalTitle });
+    const title = getTitle({ base, number: prNumber, title: originalTitle });
     const merged_by = originalMergedBy?.login ?? "";
     const runUrl = `${serverUrl}/${owner}/${repo}/actions/runs/${runId}`;
     // PRs are handled sequentially to avoid breaking GitHub's log grouping feature.
@@ -369,9 +370,9 @@ const backport = async ({
               errorMessage: error.message,
               head,
               runUrl,
-              number,
+              prNumber,
             }),
-            issue_number: number,
+            issue_number: prNumber,
             owner,
             repo,
           },
@@ -380,7 +381,7 @@ const backport = async ({
         await github.request(
           "POST /repos/{owner}/{repo}/issues/{issue_number}/labels",
           {
-            issue_number: number,
+            issue_number: prNumber,
             labels: [
               "backports",
               "release-blocker",
