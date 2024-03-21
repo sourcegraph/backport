@@ -159,15 +159,15 @@ const getFailedBackportCommentBody = ({
   commitSha,
   errorMessage,
   head,
-  runUrl,
   prNumber,
+  runUrl,
 }: {
   base: string;
   commitSha: string;
   errorMessage: string;
   head: string;
-  runUrl: string;
   prNumber: number;
+  runUrl: string;
 }) => {
   const worktreePath = `.worktrees/backport-${base}`;
   return `The backport to \`${base}\` failed at ${runUrl}:
@@ -369,8 +369,8 @@ const backport = async ({
               commitSha: mergeCommitSha,
               errorMessage: error.message,
               head,
-              runUrl,
               prNumber,
+              runUrl,
             }),
             issue_number: prNumber,
             owner,
