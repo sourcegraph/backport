@@ -159,57 +159,81 @@ const getFailedBackportCommentBody = ({
   commitSha,
   errorMessage,
   head,
+  prNumber,
   runUrl,
 }: {
   base: string;
   commitSha: string;
   errorMessage: string;
   head: string;
+  prNumber: number;
   runUrl: string;
 }) => {
   const worktreePath = `.worktrees/backport-${base}`;
-  return [
-    `The backport to \`${base}\` failed at ${runUrl}:`,
-    "```",
-    errorMessage,
-    "```",
-    "To backport manually, run these commands in your terminal:",
-    "```bash",
-    "# Fetch latest updates from GitHub",
-    "git fetch",
-    "# Create a new working tree",
-    `git worktree add ${worktreePath} ${base}`,
-    "# Navigate to the new working tree",
-    `cd ${worktreePath}`,
-    "# Create a new branch",
-    `git switch --create ${head}`,
-    "# Cherry-pick the merged commit of this pull request and resolve the conflicts",
-    `git cherry-pick -x --mainline 1 ${commitSha}`,
-    "# Push it to GitHub",
-    `git push --set-upstream origin ${head}`,
-    "# Go back to the original working tree",
-    "cd ../..",
-    "# Delete the working tree",
-    `git worktree remove ${worktreePath}`,
-    "```",
-    "If you encouter conflict, first resolve the conflict and stage all files, then run the commands below:",
-    "```bash",
-    "git cherry-pick --continue",
-    "# Push it to GitHub",
-    `git push --set-upstream origin ${head}`,
-    "# Go back to the original working tree",
-    "cd ../..",
-    "# Delete the working tree",
-    `git worktree remove ${worktreePath}`,
-    "```",
-    "",
-    "- [ ] Follow above instructions to backport the commit.",
-    `- [ ] Create a pull request where the \`base\` branch is \`${base}\` and the \`compare\`/\`head\` branch is \`${head}\`., [click here to create the pull request](https://github.com/sourcegraph/sourcegraph/compare/${base}...${head}?expand=1).`,
-    "- [ ] Make sure to tag `@sourcegraph/release` in the pull request description.",
-    "- [ ] Once the backport pull request is created, kindly remove the `release-blocker` from this pull request.",
-    "",
-  ].join("\n");
-};
+  return `The backport to \`${base}\` failed at ${runUrl}:
+\`\`\`
+${errorMessage}
+\`\`\`
+
+To backport this PR manually, you can either:
+
+<details>
+<summary>Via the sg tool</summary>
+
+Use the \`sg backport\` command to backport your commit to the release branch.
+
+\`\`\`bash
+sg backport -r ${base} -p ${prNumber}
+\`\`\`
+</details>
+
+<details>
+<summary>
+Via your terminal
+</summary>
+
+To backport manually, run these commands in your terminal:
+
+\`\`\`bash
+# Fetch latest updates from GitHub
+git fetch
+# Create a new working tree
+git worktree add ${worktreePath} ${base}
+# Navigate to the new working tree
+cd ${worktreePath}
+# Create a new branch
+git switch --create ${head}
+# Cherry-pick the merged commit of this pull request and resolve the conflicts
+git cherry-pick -x --mainline 1 ${commitSha}
+# Push it to GitHub
+git push --set-upstream origin ${head}
+# Go back to the original working tree
+cd ../..
+# Delete the working tree
+git worktree remove ${worktreePath}
+\`\`\`
+
+If you encouter conflict, first resolve the conflict and stage all files, then run the commands below:
+\`\`\`bash
+git cherry-pick --continue
+# Push it to GitHub
+git push --set-upstream origin ${head}
+# Go back to the original working tree
+cd ../..
+# Delete the working tree
+git worktree remove ${worktreePath}
+\`\`\`
+
+- [ ] Follow above instructions to backport the commit.
+- [ ] Create a pull request where the \`base\` branch is \`${base}\` and the \`compare\`/\`head\` branch is \`${head}\`., [click here to create the pull request](https://github.com/sourcegraph/sourcegraph/compare/${base}...${head}?expand=1).
+</details>
+
+Once the pull request has been created, please ensure the following:
+
+- [ ] Make sure to tag \`@sourcegraph/release\` in the pull request description.
+
+- [ ] kindly remove the \`release-blocker\` from this pull request.
+`};
 
 const backport = async ({
   getBody,
@@ -255,7 +279,7 @@ const backport = async ({
       merge_commit_sha: mergeCommitSha,
       merged,
       merged_by: originalMergedBy,
-      number,
+      number: prNumber,
       title: originalTitle,
       user: { login: author },
     },
@@ -282,7 +306,7 @@ const backport = async ({
 
   await warnIfSquashIsNotTheOnlyAllowedMergeMethod({ github, owner, repo });
 
-  info(`Backporting ${mergeCommitSha} from #${number}.`);
+  info(`Backporting ${mergeCommitSha} from #${prNumber}.`);
 
   const cloneUrl = new URL(payload.repository.clone_url);
   cloneUrl.username = "x-access-token";
@@ -304,15 +328,15 @@ const backport = async ({
       base,
       body: originalBody ? stripTestPlanFromPRBody(originalBody) : "",
       mergeCommitSha,
-      number,
+      number: prNumber,
     });
-    const head = getHead({ base, number });
+    const head = getHead({ base, number: prNumber });
     const labels = originalLabels
       .map((label) => label.name)
       .filter((label) => !labelRegExp.test(label));
     labels.push("backports", `backported-to-${base}`);
 
-    const title = getTitle({ base, number, title: originalTitle });
+    const title = getTitle({ base, number: prNumber, title: originalTitle });
     const merged_by = originalMergedBy?.login ?? "";
     const runUrl = `${serverUrl}/${owner}/${repo}/actions/runs/${runId}`;
     // PRs are handled sequentially to avoid breaking GitHub's log grouping feature.
@@ -345,9 +369,10 @@ const backport = async ({
               commitSha: mergeCommitSha,
               errorMessage: error.message,
               head,
+              prNumber,
               runUrl,
             }),
-            issue_number: number,
+            issue_number: prNumber,
             owner,
             repo,
           },
@@ -356,7 +381,7 @@ const backport = async ({
         await github.request(
           "POST /repos/{owner}/{repo}/issues/{issue_number}/labels",
           {
-            issue_number: number,
+            issue_number: prNumber,
             labels: [
               "backports",
               "release-blocker",
