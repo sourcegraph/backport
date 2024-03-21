@@ -160,6 +160,7 @@ const getFailedBackportCommentBody = ({
   errorMessage,
   head,
   runUrl,
+  prNumber,
 }: {
   base: string;
   commitSha: string;
@@ -168,48 +169,70 @@ const getFailedBackportCommentBody = ({
   runUrl: string;
 }) => {
   const worktreePath = `.worktrees/backport-${base}`;
-  return [
-    `The backport to \`${base}\` failed at ${runUrl}:`,
-    "```",
-    errorMessage,
-    "```",
-    "To backport manually, run these commands in your terminal:",
-    "```bash",
-    "# Fetch latest updates from GitHub",
-    "git fetch",
-    "# Create a new working tree",
-    `git worktree add ${worktreePath} ${base}`,
-    "# Navigate to the new working tree",
-    `cd ${worktreePath}`,
-    "# Create a new branch",
-    `git switch --create ${head}`,
-    "# Cherry-pick the merged commit of this pull request and resolve the conflicts",
-    `git cherry-pick -x --mainline 1 ${commitSha}`,
-    "# Push it to GitHub",
-    `git push --set-upstream origin ${head}`,
-    "# Go back to the original working tree",
-    "cd ../..",
-    "# Delete the working tree",
-    `git worktree remove ${worktreePath}`,
-    "```",
-    "If you encouter conflict, first resolve the conflict and stage all files, then run the commands below:",
-    "```bash",
-    "git cherry-pick --continue",
-    "# Push it to GitHub",
-    `git push --set-upstream origin ${head}`,
-    "# Go back to the original working tree",
-    "cd ../..",
-    "# Delete the working tree",
-    `git worktree remove ${worktreePath}`,
-    "```",
-    "",
-    "- [ ] Follow above instructions to backport the commit.",
-    `- [ ] Create a pull request where the \`base\` branch is \`${base}\` and the \`compare\`/\`head\` branch is \`${head}\`., [click here to create the pull request](https://github.com/sourcegraph/sourcegraph/compare/${base}...${head}?expand=1).`,
-    "- [ ] Make sure to tag `@sourcegraph/release` in the pull request description.",
-    "- [ ] Once the backport pull request is created, kindly remove the `release-blocker` from this pull request.",
-    "",
-  ].join("\n");
-};
+  return `The backport to \`${base}\` failed at ${runUrl}:
+\`\`\`
+${errorMessage}
+\`\`\`
+
+To backport this PR manually, you can either:
+
+<details>
+<summary>Via the sg tool</summary>
+
+Use the \`sg backport\` command to backport your commit to the release branch.
+
+\`\`\`bash
+sg backport -r ${base} -p ${prNumber}
+\`\`\`
+</details>
+
+<details>
+<summary>
+Via your terminal
+</summary>
+
+To backport manually, run these commands in your terminal:
+
+\`\`\`bash
+# Fetch latest updates from GitHub
+git fetch
+# Create a new working tree
+git worktree add ${worktreePath} ${base}
+# Navigate to the new working tree
+cd ${worktreePath}
+# Create a new branch
+git switch --create ${head}
+# Cherry-pick the merged commit of this pull request and resolve the conflicts
+git cherry-pick -x --mainline 1 ${commitSha}
+# Push it to GitHub
+git push --set-upstream origin ${head}
+# Go back to the original working tree
+cd ../..
+# Delete the working tree
+git worktree remove ${worktreePath}
+\`\`\`
+
+If you encouter conflict, first resolve the conflict and stage all files, then run the commands below:
+\`\`\`bash
+git cherry-pick --continue
+# Push it to GitHub
+git push --set-upstream origin ${head}
+# Go back to the original working tree
+cd ../..
+# Delete the working tree
+git worktree remove ${worktreePath}
+\`\`\`
+
+- [ ] Follow above instructions to backport the commit.
+- [ ] Create a pull request where the \`base\` branch is \`${base}\` and the \`compare\`/\`head\` branch is \`${head}\`., [click here to create the pull request](https://github.com/sourcegraph/sourcegraph/compare/${base}...${head}?expand=1).
+</details>
+
+Once the pull request has been created, please ensure the following:
+
+- [ ] Make sure to tag \`@sourcegraph/release\` in the pull request description.
+
+- [ ] kindly remove the \`release-blocker\` from this pull request.
+`};
 
 const backport = async ({
   getBody,
@@ -346,6 +369,7 @@ const backport = async ({
               errorMessage: error.message,
               head,
               runUrl,
+              number,
             }),
             issue_number: number,
             owner,
