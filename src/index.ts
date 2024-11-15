@@ -15,6 +15,7 @@ const run = async () => {
 
     const labelPattern = getInput("label_pattern");
     const labelRegExp = new RegExp(labelPattern);
+    const teamReviews = getInput("team_reviews");
 
     const token = getInput("github_token", { required: true });
 
@@ -40,6 +41,7 @@ const run = async () => {
       payload,
       runId,
       serverUrl,
+      teamReviews,
       token,
     });
     setOutput(
