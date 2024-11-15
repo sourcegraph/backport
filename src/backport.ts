@@ -87,6 +87,7 @@ const backportOnce = async ({
   merged_by,
   owner,
   repo,
+  teamReviews,
   title,
 }: Readonly<{
   author: string;
@@ -99,6 +100,7 @@ const backportOnce = async ({
   merged_by: string;
   owner: string;
   repo: string;
+  teamReviews: string;
   title: string;
 }>): Promise<number> => {
   const git = async (...args: string[]) => {
@@ -135,7 +137,7 @@ const backportOnce = async ({
         author !== merged_by && merged_by !== ""
           ? [author, merged_by]
           : [author],
-      team_reviewers: ["release"],
+      ...(teamReviews !== "" && { team_reviewers: [teamReviews] })
     },
   );
   if (labels.length > 0) {
@@ -243,6 +245,7 @@ const backport = async ({
   payload,
   runId,
   serverUrl,
+  teamReviews,
   token,
 }: {
   getBody: (
@@ -270,6 +273,7 @@ const backport = async ({
   payload: PullRequestClosedEvent | PullRequestLabeledEvent;
   runId: number;
   serverUrl: string;
+  teamReviews: string,
   token: string;
 }): Promise<{ [base: string]: number }> => {
   const {
@@ -354,6 +358,7 @@ const backport = async ({
           merged_by,
           owner,
           repo,
+          teamReviews,
           title,
         });
         createdPullRequestBaseBranchToNumber[base] = backportPullRequestNumber;

@@ -24,6 +24,10 @@ inputs:
         - base: backport PR's base branch
         - number: original PR's number
     default: "backport-<%= number %>-to-<%= base %>"
+  team_reviews:
+    description: Whether to request reviews from the team.
+    required: false
+    default: "release"
   label_pattern:
     description: >
       The regular expression pattern that PR labels will be tested on to decide whether the PR should be backported and where.
