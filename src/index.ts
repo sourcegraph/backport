@@ -33,21 +33,26 @@ const run = async () => {
       );
     }
 
-    const createdPullRequestBaseBranchToNumber = await backport({
-      getBody,
-      getHead,
-      getTitle,
-      labelRegExp,
-      payload,
-      runId,
-      serverUrl,
-      teamReviews,
-      token,
-    });
+    const { createdPullRequestBaseBranchToNumber, failedBaseBranches } =
+      await backport({
+        getBody,
+        getHead,
+        getTitle,
+        labelRegExp,
+        payload,
+        runId,
+        serverUrl,
+        teamReviews,
+        token,
+      });
     setOutput(
       "created_pull_requests",
       JSON.stringify(createdPullRequestBaseBranchToNumber),
     );
+    if (failedBaseBranches.length > 0) {
+      const failed = failedBaseBranches.join(", ");
+      throw new Error(`Backport failed for ${failed}. See the errors above.`);
+    }
   } catch (_error: unknown) {
     const error = ensureError(_error);
     setFailed(error);
