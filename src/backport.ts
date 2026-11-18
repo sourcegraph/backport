@@ -104,7 +104,23 @@ const backportOnce = async ({
   title: string;
 }>): Promise<number> => {
   const git = async (...args: string[]) => {
-    await exec("git", args, { cwd: repo });
+    let stderr = "";
+    const exitCode = await exec("git", args, {
+      cwd: repo,
+      ignoreReturnCode: true,
+      listeners: {
+        stderr(data) {
+          stderr += data.toString();
+        },
+      },
+    });
+    if (exitCode !== 0) {
+      // Include git's own error output so the PR comment explains the failure.
+      const command = `git ${args.join(" ")}`;
+      throw new Error(
+        `${command} failed with exit code ${exitCode}:\n${stderr.trim()}`,
+      );
+    }
   };
 
   await git("switch", base);
@@ -116,7 +132,30 @@ const backportOnce = async ({
     throw error;
   }
 
-  await git("push", "--set-upstream", "origin", head);
+  // GitHub sometimes rejects pushes transiently, for example when its check
+  // for workflow file changes times out, so retry before giving up.
+  const pushAttempts = 3;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      await git("push", "--set-upstream", "origin", head);
+      break;
+    } catch (error: unknown) {
+      if (attempt === pushAttempts) {
+        throw error;
+      }
+
+      const delaySeconds = 10 * attempt;
+      warning(
+        `Push attempt ${attempt} of ${pushAttempts} failed, retrying in ${delaySeconds} seconds.`,
+      );
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((resolve) => {
+        setTimeout(resolve, delaySeconds * 1000);
+      });
+    }
+  }
+
   const {
     data: { number },
   } = await github.request("POST /repos/{owner}/{repo}/pulls", {
@@ -275,7 +314,10 @@ const backport = async ({
   serverUrl: string;
   teamReviews: string,
   token: string;
-}): Promise<{ [base: string]: number }> => {
+}): Promise<{
+  createdPullRequestBaseBranchToNumber: { [base: string]: number };
+  failedBaseBranches: string[];
+}> => {
   const {
     pull_request: {
       body: originalBody,
@@ -303,7 +345,7 @@ const backport = async ({
   const baseBranches = getBaseBranches({ labelRegExp, payload });
   if (baseBranches.length === 0) {
     info("No backports required.");
-    return {};
+    return { createdPullRequestBaseBranchToNumber: {}, failedBaseBranches: [] };
   }
 
   const github = getOctokit(token);
@@ -326,6 +368,7 @@ const backport = async ({
   await exec("git", ["config", "--global", "user.name", "github-actions[bot]"]);
 
   const createdPullRequestBaseBranchToNumber: { [base: string]: number } = {};
+  const failedBaseBranches: string[] = [];
 
   for (const base of baseBranches) {
     const body = getBody({
@@ -365,6 +408,7 @@ const backport = async ({
       } catch (_error: unknown) {
         const error = ensureError(_error);
         logError(error);
+        failedBaseBranches.push(base);
 
         await github.request(
           "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
@@ -400,7 +444,7 @@ const backport = async ({
     });
   }
 
-  return createdPullRequestBaseBranchToNumber;
+  return { createdPullRequestBaseBranchToNumber, failedBaseBranches };
 };
 
 export { backport };
